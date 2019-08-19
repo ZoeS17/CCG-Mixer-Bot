@@ -14,6 +14,7 @@ class Logger:
     def __init__(self, stdout):
         global CHATDEBUG
         today = date.today()
+        print(today)
         if CHATDEBUG is True:
             self.filename = f"./logs/{channelName}/Debug/{today}.mlog"
         else:
@@ -45,12 +46,10 @@ if len(sys.argv) > 1:
 
 log = Logger(sys.stdout)
 sys.stdout = log
-Admins = ["zoe_s17"]
-
-
+sys.__stdout__.flush()
+awayAdmins = list()
 class Handler():
-    """handles chat events."""
-
+    """ Handles chat events. """
     def __init__(self, config, chat):
         self.config = config
         self.event_types = {
@@ -60,11 +59,13 @@ class Handler():
         self.chat = chat
 
     def isAdmin(self, un):
-        global Admins
-        if un in Admins:
-            return True
-        else:
-            return False
+        un = un.lower()
+        with open(f"./Admins", "rt", encoding='utf-8') as a:
+            lines = a.read().splitlines()
+            if un in lines:
+                return True
+            else:
+                return False
 
     def top_role(self, roles):
         if "Banned" in roles:
@@ -93,24 +94,72 @@ class Handler():
         else:
             return "User"
 
+    def adminCmd(self, adm, params):
+            d = params.split(" ")
+            cmd = d[0].lower()
+            if len(d) > 1:
+                aparam = d[1].lower()
+
+            if cmd == "add":
+                with open(f"./Admins", "at", encoding='utf-8') as f:
+                    f.write(d[1].lower()+"\n")
+                msg = f"Added user {aparam} to the admin list."
+                self.chat.whisper(adm, msg + "\n")
+
+            elif cmd == "del":
+                with open(f"./Admins", "rt", encoding='utf-8') as o:
+                    with open(f"./.tmp_Admins", "wt", encoding='utf-8') as n:
+                        lines = o.read().splitlines()
+                        for item in lines:
+                            if item == d[1].lower():
+                                pass
+                            else:
+                                n.write(item + "\n")
+                os.remove("./Admins")
+                os.rename("./.tmp_Admins","./Admins")
+                msg = f"Deleted user {aparam} from the admin list."
+                self.chat.whisper(adm, msg + "\n")
+            
+            elif cmd == "list":
+                msg = ""
+                with open(f"./Admins", "rt", encoding='utf-8') as f:
+                    lines = f.read().splitlines()
+                    msg += " ".join(lines)
+                    self.chat.whisper(adm, msg + "\n")
+            elif cmd == "away":
+                global awayAdmins
+                adm = adm.lower()
+                if adm in awayAdmins:
+                    awayAdmins.remove(adm)
+                    self.chat.whisper(adm, "You have returned from away.")
+                else:
+                    awayAdmins.append(adm)
+                    self.chat.whisper(adm, "You have been marked away.")
+            # new commands here
+            # elif cmd == "":
+            # pass
+
     def command(self, cmd, data, params, role):
+        invoker=data["data"]["user_name"]
         if cmd.startswith("admin"):
-            global Admins
-            if self.isAdmin(data["data"]["user_name"]):
-                d = params.split(" ")
-                if d[0].lower() == "add":
-                    Admins.append(d[1].lower())
-                elif d[0].lower() == "del":
-                    for i, v in enumerate(Admins):
-                        if v == d[1].lower():
-                            del Admins[i]
+            """ We can't delete a whisper so don't try. """
+            if "whisper" in data["data"]["message"]["meta"]:
+                pass
+            else:
+                self.chat.delete_msg(data["data"]["id"])
+            """ Invoke admin command handler if appropriate. """
+            if self.isAdmin(invoker):
+                self.adminCmd(invoker, params)
+            else:
+                self.chat.whisper(invoker,
+                    f"You must be an admin of the bot to use that command.")
         elif cmd.startswith("warn"):
             if "whisper" in data["data"]["message"]["meta"]:
                 pass
             else:
                 self.chat.delete_msg(data["data"]["id"])
             if ((role == "Mod") or (role == "Owner")):
-                # write warning to channel/warnings file
+                """ Write warning to channel/warnings file. """
                 warnings = f"./logs/{channelName}/warnings"
                 o = params.split(" ")
                 user = o[0]
@@ -125,7 +174,7 @@ class Handler():
                 self.chat.delete_msg(data["data"]["id"])
                 postCount = True
             if ((role == "Mod") or (role == "Owner")):
-                # write bans to channel/banList file
+                """Write bans to channel/banList file."""
                 from get_ban_list import getBanList
                 getBanList(remote=f"{channelName}")
                 count = os.popen("echo $(wc -l /root/code/CourtesyCallBot/Mixer/logs"
@@ -134,25 +183,26 @@ class Handler():
                 if postCount:
                     self.chat.message(f"{count} trolls")
                 else:
-                    self.chat.whisper(data["data"]["user_name"], f"{count} trolls")
+                    self.chat.whisper(invoker, f"{count} trolls")
         # new commands here
         # elif cmd.startswith(""):
             # pass
 
     def formatting(self, data):
-        """Check the event type and calls the function for that type."""
+        """ Check the event type and calls the function for that type. """
         func = self.event_types[data["type"]]
         func(data)
         if self.config.CHATDEBUG:
             print(data)
 
     def type_reply(self, data):
-        """Handle the Reply type data."""
+        """ Handle the Reply type data. """
         if "data" in data:
             if "authenticated" in data["data"]:
                 if data["data"]["authenticated"]:
-                    os.system("clear")
+                    ## os.system("clear")
                     # print("Authenticated with the server")
+                    pass
                 else:
                     print("Authenticated Failed, Chat log restricted")
             elif "Message deleted." in data["data"]:
@@ -161,13 +211,15 @@ class Handler():
                 pass
             else:
                 pass
-                # print(f"Server Reply: {data}")
         else:
             sys.__stdout__.write(f"Server Reply[error]: {data['error']}\n")
             sys.__stdout__.flush()
 
     def type_event(self, data):
-        """Handle the reply chat event types."""
+        """ Handle the reply chat event types. """
+        global awayAdmins
+        s = requests.Session()
+        s.headers.update({'Client-ID': os.environ['Client_ID']})
         event_string = {
             "WelcomeEvent": "Connected to the channel chat...",
             "UserJoin": "{} has joined the channel.",
@@ -197,7 +249,6 @@ class Handler():
 
         elif data["event"] == "UserUpdate":
             # test=data["data"]["roles"]
-            s = requests.Session()
             users_resp = s.get("https://mixer.com/api/v1/users/{}".format(
                 data["data"]["user"])).json()["username"]
             test = data["data"]["roles"]
@@ -220,7 +271,6 @@ class Handler():
                                       f"{usr} has left the channel.")
 
         elif data["event"] == "PurgeMessage":
-            s = requests.Session()
             users_response = s.get("https://mixer.com/api/v1/users/{}".format(
                 data["data"]["user_id"])).json()["username"]
             USERNAME = users_response
@@ -230,11 +280,7 @@ class Handler():
                 print(f"{mod} has purged {USERNAME}'s messages.")
             else:
                 pass
-                # print(f"{USERNAME} has been banned.")
 
-# {"type": "event", "event": "DeleteMessage", "data": {"moderator": {
-#          "user_name": "Zoe_S17", "user_id": 2581996, "user_roles": ["Owner"],
-#          "user_level": 71}, "id": "2979df00-8f71-11e9-8f32-55384c00f3b7"}}
         elif data["event"] == "DeleteMessage":
             # pass
             print(event_string[data["event"]].format(
@@ -256,7 +302,6 @@ class Handler():
             self.poll_switch = True
 
         elif data["event"] == "SkillAttribution":
-            pass
             user = data["data"]["user_name"]
             skill = data["data"]["skill"]["skill_name"]
             sparks = data["data"]["skill"]["cost"]
@@ -277,14 +322,15 @@ class Handler():
             elif "whisper" in data["data"]["message"]["meta"]:
                 user = data["data"]["user_name"]
                 target = data["data"]["target"]
-                if data["data"]["target"].lower() == "zoe_s17":
+                if target.lower() in awayAdmins:
+                    if user.lower() == "zoe_s17":
+                        if target.lower() == "zoe_s17":
+                            pass
+                    else:
+                        self.chat.whisper(user, f"{target} is away.")
+                if target.lower() == "zoe_s17":
                     sys.__stdout__.write(f"{user} → {target} : {msg}\n")
                     sys.__stdout__.flush()
-                else:
-                    print(event_string["whisper"].format(
-                        user=user,
-                        target=target,
-                        msg=msg))
 
             elif "me" in data["data"]["message"]["meta"]:
                 print(event_string["me"].format(
@@ -300,11 +346,10 @@ class Handler():
             print(f"[debug] {data}")
 
     def type_method(self, data):
-        """Handle the reply chat event types."""
+        """ Handle the reply chat event types. """
         if self.config.CHATDEBUG:
             if data["method"] == "auth":
                 pass
-                # print("Authenticating with the server...")
 
             elif data["method"] == "msg":
                 if self.config.CHATDEBUG:
@@ -313,6 +358,6 @@ class Handler():
                 print("METHOD MSG: {}".format(str(data)))
 
     def type_system(self, data):
-        """Handle the reply chat event types."""
+        """ Handle the reply chat event types. """
         if self.config.CHATDEBUG:
             print("SYSTEM MSG: {}".format(str(data["data"])))
