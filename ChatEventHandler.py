@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 
 """ Handles and formats chat events. """
-# import json
+import json
 import os
 import sys
+import re
 import requests
-from datetime import date
+from datetime import *
 
 
 class Logger:
@@ -48,6 +49,17 @@ log = Logger(sys.stdout)
 sys.stdout = log
 sys.__stdout__.flush()
 awayAdmins = list()
+class Tokens:
+    """Tokens is a bearer from an OAuth access and refresh token retrieved
+    via the :func:`~interactive_python.Handler.refresh` method.
+    """
+
+    def __init__(self, body):
+        self.access = body['access_token']
+        self.refresh = body['refresh_token']
+        self.expires_at = datetime.now() + \
+                          timedelta(seconds=body['expires_in'])
+
 class Handler():
     """ Handles chat events. """
     def __init__(self, config, chat):
@@ -94,6 +106,37 @@ class Handler():
         else:
             return "User"
 
+    def refresh(self):
+        try:
+            my_client_id = os.environ['Client_ID']
+            my_client_secret = os.environ['Client_Secret']
+        except KeyError:
+            pass
+        with open('tokens', "r") as json_file:
+            data = json.load(json_file)
+            sys.__stdout__.write(str(type(data))+"\n")
+            sys.__stdout__.flush()
+            for k in data:
+                ACCESS_TOKEN = k['access_token']
+                REFRESH_TOKEN = k['refresh_token']
+                expires_at = k['expires_in']
+        if datetime.fromisoformat(expires_at) < datetime.now():
+            rs = requests.Session()
+            rjson = {"client_id": my_client_id, "client_secret":
+                      my_client_secret, "refresh_token":REFRESH_TOKEN,
+                      "grant_type": "refresh_token"}
+            with rs.post(url = "https://mixer.com/api/v1/oauth/token",
+                               json = rjson) as resp:
+                newTokens = Tokens(resp.json())
+            newTokens.expires_at = "".join(str(newTokens.expires_at).split(".")[0])
+            with open('tokens','w') as token_file:
+                tokenOut=[]
+                token_type = "Bearer"
+                tokenOut.append({"access_token": newTokens.access, "token_type": token_type,
+                    "expires_in": newTokens.expires_at, "refresh_token":
+                        newTokens.refresh})
+                json.dump(tokenOut, token_file)
+
     def adminCmd(self, adm, params):
             d = params.split(" ")
             cmd = d[0].lower()
@@ -135,6 +178,8 @@ class Handler():
                 else:
                     awayAdmins.append(adm)
                     self.chat.whisper(adm, "You have been marked away.")
+            elif cmd == "refresh":
+                self.refresh()
             # new commands here
             # elif cmd == "":
             # pass
@@ -200,7 +245,7 @@ class Handler():
         if "data" in data:
             if "authenticated" in data["data"]:
                 if data["data"]["authenticated"]:
-                    ## os.system("clear")
+                    os.system("clear")
                     # print("Authenticated with the server")
                     pass
                 else:
@@ -248,7 +293,6 @@ class Handler():
             print(f"[DEBUG - UserTimeout] {data}")
 
         elif data["event"] == "UserUpdate":
-            # test=data["data"]["roles"]
             users_resp = s.get("https://mixer.com/api/v1/users/{}".format(
                 data["data"]["user"])).json()["username"]
             test = data["data"]["roles"]
@@ -257,7 +301,6 @@ class Handler():
                   username=users_resp,
                   role=role
                   ))
-            # print(f"[DEBUG - UserUpdate] {test}")
 
         elif data["event"] == "UserJoin" or data["event"] == "UserLeave":
             if data["data"]["username"] is not None:
@@ -274,7 +317,6 @@ class Handler():
             users_response = s.get("https://mixer.com/api/v1/users/{}".format(
                 data["data"]["user_id"])).json()["username"]
             USERNAME = users_response
-            # print("[DEBUG-PurgeMessage]: ",data)
             if "moderator" in data["data"]:
                 mod = data["data"]["moderator"]["user_name"]
                 print(f"{mod} has purged {USERNAME}'s messages.")
