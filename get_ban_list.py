@@ -27,7 +27,7 @@ def getBanList(remote=""):
     s = requests.Session()
     s.headers.update({'Client-ID': my_client_id})
     channel_response = s.get(
-            f"https://mixer.com/api/v1/channels/{channelName}")
+        f"https://mixer.com/api/v1/channels/{channelName}")
     CHANNELID = channel_response.json()["id"]
     bans_response = s.get(
         f"https://mixer.com/api/v1/channels/{CHANNELID}"
@@ -42,7 +42,7 @@ def getBanList(remote=""):
         banList = list(data)
         with open(f"./logs/{channelName}/banList", "w", encoding='utf-8') as f:
             for item in banList:
-                f.write(item+"\n")
+                f.write(item + "\n")
         for i in range(1, pages):
             bans_response = s.get(
                 f"https://mixer.com/api/v1/channels/{CHANNELID}"
@@ -53,7 +53,7 @@ def getBanList(remote=""):
             with open(f"./logs/{channelName}/banList",
                       "a", encoding='utf-8') as f:
                 for item in banList:
-                    f.write(item+"\n")
+                    f.write(item + "\n")
     else:
         bans_response = s.get(
             f"https://mixer.com/api/v1/channels/{CHANNELID}"
@@ -64,8 +64,9 @@ def getBanList(remote=""):
         with open(f"./logs/{channelName}/banList",
                   "w", encoding='utf-8') as f:
             for item in banList:
-                f.write(item+"\n")
-    os.system(f"sort ./logs/{channelName}/banList -o ./logs/{channelName}/banList")
+                f.write(item + "\n")
+    os.system(f"sort ./logs/{channelName}/banList -o "
+              f"./logs/{channelName}/banList")
 
 
 if __name__ == "__main__":

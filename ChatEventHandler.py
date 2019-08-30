@@ -5,7 +5,6 @@
 import json
 import os
 import sys
-import re
 import requests
 from datetime import *
 
@@ -49,6 +48,8 @@ log = Logger(sys.stdout)
 sys.stdout = log
 sys.__stdout__.flush()
 awayAdmins = list()
+
+
 class Tokens:
     """Tokens is a bearer from an OAuth access and refresh token retrieved
     via the :func:`~interactive_python.Handler.refresh` method.
@@ -57,8 +58,9 @@ class Tokens:
     def __init__(self, body):
         self.access = body['access_token']
         self.refresh = body['refresh_token']
-        self.expires_at = datetime.now() + \
-                          timedelta(seconds=body['expires_in'])
+        self.expires_at = datetime.now() +\
+            timedelta(seconds=body['expires_in'])
+
 
 class Handler():
     """ Handles chat events. """
@@ -106,7 +108,7 @@ class Handler():
         else:
             return "User"
 
-    def refresh(self):
+    def refresh(self, invoker):
         try:
             my_client_id = os.environ['Client_ID']
             my_client_secret = os.environ['Client_Secret']
@@ -114,78 +116,82 @@ class Handler():
             pass
         with open('tokens', "r") as json_file:
             data = json.load(json_file)
-            sys.__stdout__.write(str(type(data))+"\n")
-            sys.__stdout__.flush()
             for k in data:
-                ACCESS_TOKEN = k['access_token']
                 REFRESH_TOKEN = k['refresh_token']
                 expires_at = k['expires_in']
         if datetime.fromisoformat(expires_at) < datetime.now():
             rs = requests.Session()
             rjson = {"client_id": my_client_id, "client_secret":
-                      my_client_secret, "refresh_token":REFRESH_TOKEN,
-                      "grant_type": "refresh_token"}
-            with rs.post(url = "https://mixer.com/api/v1/oauth/token",
-                               json = rjson) as resp:
+                     my_client_secret, "refresh_token": REFRESH_TOKEN,
+                     "grant_type": "refresh_token"}
+            with rs.post(url="https://mixer.com/api/v1/oauth/token",
+                         json=rjson) as resp:
                 newTokens = Tokens(resp.json())
-            newTokens.expires_at = "".join(str(newTokens.expires_at).split(".")[0])
-            with open('tokens','w') as token_file:
-                tokenOut=[]
+            newTokens.expires_at = "".join(str(newTokens.expires_at
+                                               ).split(".")[0])
+            self.config.ACCESS_TOKEN = newTokens.access
+            self.config.REFRESH_TOKEN = newTokens.refresh
+            self.config.EXPIRES_AT = newTokens.expires_at
+            self.chat.whisper(invoker, "OAuth token now expires at: "
+                              f"{newTokens.expires_at}")
+            with open('tokens', 'w') as token_file:
+                tokenOut = []
                 token_type = "Bearer"
-                tokenOut.append({"access_token": newTokens.access, "token_type": token_type,
-                    "expires_in": newTokens.expires_at, "refresh_token":
-                        newTokens.refresh})
+                tokenOut.append({"access_token": newTokens.access,
+                                 "token_type": token_type, "expires_in":
+                                 newTokens.expires_at, "refresh_token":
+                                 newTokens.refresh})
                 json.dump(tokenOut, token_file)
 
     def adminCmd(self, adm, params):
-            d = params.split(" ")
-            cmd = d[0].lower()
-            if len(d) > 1:
-                aparam = d[1].lower()
+        d = params.split(" ")
+        cmd = d[0].lower()
+        if len(d) > 1:
+            aparam = d[1].lower()
 
-            if cmd == "add":
-                with open(f"./Admins", "at", encoding='utf-8') as f:
-                    f.write(d[1].lower()+"\n")
-                msg = f"Added user {aparam} to the admin list."
-                self.chat.whisper(adm, msg + "\n")
+        if cmd == "add":
+            with open(f"./Admins", "at", encoding='utf-8') as f:
+                f.write(d[1].lower() + "\n")
+            msg = f"Added user {aparam} to the admin list."
+            self.chat.whisper(adm, msg + "\n")
 
-            elif cmd == "del":
-                with open(f"./Admins", "rt", encoding='utf-8') as o:
-                    with open(f"./.tmp_Admins", "wt", encoding='utf-8') as n:
-                        lines = o.read().splitlines()
-                        for item in lines:
-                            if item == d[1].lower():
-                                pass
-                            else:
-                                n.write(item + "\n")
-                os.remove("./Admins")
-                os.rename("./.tmp_Admins","./Admins")
-                msg = f"Deleted user {aparam} from the admin list."
+        elif cmd == "del":
+            with open(f"./Admins", "rt", encoding='utf-8') as o:
+                with open(f"./.tmp_Admins", "wt", encoding='utf-8') as n:
+                    lines = o.read().splitlines()
+                    for item in lines:
+                        if item == d[1].lower():
+                            pass
+                        else:
+                            n.write(item + "\n")
+            os.remove("./Admins")
+            os.rename("./.tmp_Admins", "./Admins")
+            msg = f"Deleted user {aparam} from the admin list."
+            self.chat.whisper(adm, msg + "\n")
+
+        elif cmd == "list":
+            msg = ""
+            with open(f"./Admins", "rt", encoding='utf-8') as f:
+                lines = f.read().splitlines()
+                msg += " ".join(lines)
                 self.chat.whisper(adm, msg + "\n")
-            
-            elif cmd == "list":
-                msg = ""
-                with open(f"./Admins", "rt", encoding='utf-8') as f:
-                    lines = f.read().splitlines()
-                    msg += " ".join(lines)
-                    self.chat.whisper(adm, msg + "\n")
-            elif cmd == "away":
-                global awayAdmins
-                adm = adm.lower()
-                if adm in awayAdmins:
-                    awayAdmins.remove(adm)
-                    self.chat.whisper(adm, "You have returned from away.")
-                else:
-                    awayAdmins.append(adm)
-                    self.chat.whisper(adm, "You have been marked away.")
-            elif cmd == "refresh":
-                self.refresh()
-            # new commands here
-            # elif cmd == "":
-            # pass
+        elif cmd == "away":
+            global awayAdmins
+            adm = adm.lower()
+            if adm in awayAdmins:
+                awayAdmins.remove(adm)
+                self.chat.whisper(adm, "You have returned from away.")
+            else:
+                awayAdmins.append(adm)
+                self.chat.whisper(adm, "You have been marked away.")
+        elif cmd == "refresh":
+            self.refresh(adm)
+        # new commands here
+        # elif cmd == "":
+        # pass
 
     def command(self, cmd, data, params, role):
-        invoker=data["data"]["user_name"]
+        invoker = data["data"]["user_name"]
         if cmd.startswith("admin"):
             """ We can't delete a whisper so don't try. """
             if "whisper" in data["data"]["message"]["meta"]:
@@ -197,7 +203,8 @@ class Handler():
                 self.adminCmd(invoker, params)
             else:
                 self.chat.whisper(invoker,
-                    f"You must be an admin of the bot to use that command.")
+                                  "You must be an admin of the bot"
+                                  " to use that command.")
         elif cmd.startswith("warn"):
             if "whisper" in data["data"]["message"]["meta"]:
                 pass
@@ -222,8 +229,8 @@ class Handler():
                 """Write bans to channel/banList file."""
                 from get_ban_list import getBanList
                 getBanList(remote=f"{channelName}")
-                count = os.popen("echo $(wc -l /root/code/CourtesyCallBot/Mixer/logs"
-                                 f"/{channelName}/banList)|awk '"
+                count = os.popen("echo $(wc -l /root/code/CourtesyCallBot/"
+                                 f"Mixer/logs/{channelName}/banList)|awk '"
                                  "{print $1}'").read()[:-1]
                 if postCount:
                     self.chat.message(f"{count} trolls")
