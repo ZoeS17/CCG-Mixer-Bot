@@ -132,7 +132,7 @@ class Handler():
             self.config.ACCESS_TOKEN = newTokens.access
             self.config.REFRESH_TOKEN = newTokens.refresh
             self.config.EXPIRES_AT = newTokens.expires_at
-            self.chat.whisper(invoker, "OAuth token now expires at: "
+            self.chat.whisper(invoker, "OAuth token now expire at: "
                               f"{newTokens.expires_at}")
             with open('tokens', 'w') as token_file:
                 tokenOut = []
