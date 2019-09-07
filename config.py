@@ -9,7 +9,7 @@ import sys
 from datetime import *
 
 # DO NOT CHANGE THESE VALUES OR THE BOT WILL BREAK
-BEAM_URI = 'https://mixer.com/api/v1/'
+Mixer_URI = 'https://mixer.com/api/v1/'
 USERSCURRENT_URI = 'users/current'
 CHATSCID_URI = 'chats/{cid}'
 CHANNEL_NAME = sys.argv[1]
