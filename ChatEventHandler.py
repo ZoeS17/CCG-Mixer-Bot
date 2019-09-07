@@ -237,11 +237,6 @@ class Handler():
                     self.chat.message(f"{count} trolls")
                 else:
                     self.chat.whisper(invoker, f"{count} trolls")
-        elif cmd.startswith("test"):
-            s = requests.Session()
-            s.headers.update({'Client-ID': os.environ['Client_ID']})
-            users_resp = s.get("https://mixer.com/api/v1/users/6153869")
-            print(users_resp.content)
         # new commands here
         # elif cmd.startswith(""):
             # pass
@@ -258,8 +253,7 @@ class Handler():
         if "data" in data:
             if "authenticated" in data["data"]:
                 if data["data"]["authenticated"]:
-                    # os.system("clear")
-                    # print("Authenticated with the server")
+                    os.system("clear")
                     pass
                 else:
                     print("Authenticated Failed, Chat log restricted")
@@ -279,7 +273,6 @@ class Handler():
         s = requests.Session()
         s.headers.update({'Client-ID': os.environ['Client_ID']})
         event_string = {
-            "WelcomeEvent": "Connected to the channel chat...",
             "UserJoin": "{} has joined the channel.",
             "UserLeave": "{} has left the channel.",
             "ChatMessage": "{user}: {msg}",
@@ -288,36 +281,25 @@ class Handler():
             "PollStart": "{} has started a poll.",
             "PollEnd": "The poll started by {} has ended.",
             "ClearMessages": "{} has cleared chat.",
-            # "UserTimeout": "{userName} has been timed out for {length} mins.",
-            # "UserUpdate": "{username}'s top role is now {role}.",
+            "UserUpdate": "{username}'s top role is now {role}.",
             "Ban": "{username}'s was {role}.",
             "PurgeMessage": "{modname} has purged {username}'s messages.",
             "SkillAttribution": "{user} used the {skill} skill for {sparks}.",
             "DeleteMessage": "{Mod} deleted a message."}
-        # sys.__stdout__.write(f"[DEBUG]({data['event']})\n {data['data']}\n")
-        # sys.__stdout__.flush()
 
         if data["event"] == "WelcomeEvent":
-            # print(event_string[data["event"]])
             pass
 
-        # elif data["event"] == "UserTimeout":
-        #     timeLen = data["data"]["duration"]
-        #     print(event_string[data["event"]].format(
-        #         userName=data["data"]["user"]["user_name"],
-        #         length=round(timeLen / 60000)))
-        #     print(f"[DEBUG - UserTimeout] {data}")
-
-        # elif data["event"] == "UserUpdate":
-        #     users_resp = s.get("https://mixer.com/api/v1/users/{}".format(
-        #         data["data"]["user"]))
-        #     users_resp = users_resp.json()["username"]
-        #     test = data["data"]["roles"]
-        #     role = self.top_role(test)
-        #     print(event_string[data["event"]].format(
-        #           username=users_resp,
-        #           role=role
-        #           ))
+        elif data["event"] == "UserUpdate":
+            users_resp = s.get("https://mixer.com/api/v1/users/{}".format(
+                data["data"]["user"]))
+            users_resp = users_resp.json()["username"]
+            test = data["data"]["roles"]
+            role = self.top_role(test)
+            print(event_string[data["event"]].format(
+                  username=users_resp,
+                  role=role
+                  ))
 
         elif data["event"] == "UserJoin" or data["event"] == "UserLeave":
             if data["data"]["username"] is not None:
@@ -339,7 +321,7 @@ class Handler():
                 print(f"{mod} has purged {USERNAME}'s messages.")
             else:
                 users_reply = s.get("https://mixer.com/api/v1/users/{}".format(
-                data["data"]["user_id"]))
+                                    data["data"]["user_id"]))
                 users_reply = users_reply.json()["username"]
                 print(event_string["Ban"].format(
                   username=users_reply,
@@ -347,7 +329,6 @@ class Handler():
                   ))
 
         elif data["event"] == "DeleteMessage":
-            # pass
             print(event_string[data["event"]].format(
                 Mod=data["data"]["moderator"]["user_name"]))
 
@@ -390,7 +371,7 @@ class Handler():
                 if target.lower() in awayAdmins:
                     z = "zoe_s17"
                     if user.lower() == z & target.lower() == z:
-                            pass
+                        pass
                     else:
                         self.chat.whisper(user, f"{target} is away.")
                 if target.lower() == "zoe_s17":
@@ -418,11 +399,14 @@ class Handler():
 
             elif data["method"] == "msg":
                 if self.config.CHATDEBUG:
-                    print("METHOD MSG: {}".format(str(data)))
+                    sys.__stdout__.write(f"METHOD MSG: {data}\n")
+                    sys.__stdout__.flush()
             else:
-                print("METHOD MSG: {}".format(str(data)))
+                sys.__stdout__.write(f"METHOD MSG:  {data}\n")
+                sys.__stdout__.flush()
 
     def type_system(self, data):
         """ Handle the reply chat event types. """
         if self.config.CHATDEBUG:
-            print("SYSTEM MSG: {}".format(str(data["data"])))
+            sys.__stdout__.write(f"SYSTEM MSG:  {data['data']}\n")
+            sys.__stdout__.flush()

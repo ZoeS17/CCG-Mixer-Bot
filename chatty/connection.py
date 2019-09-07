@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-'''Handles the connection to Beam Chat servers'''
+"""Handles the connection to Mixer Chat servers."""
 
 import requests
 from .evented import Evented
@@ -10,7 +10,7 @@ from .errors import NotAuthenticatedError
 
 
 class Connection(Evented):
-    '''Connection Class'''
+    """Connection Class"""
 
     def __init__(self, config):
         super(Connection, self).__init__()
@@ -19,13 +19,12 @@ class Connection(Evented):
         self.userid = None
 
     def _buildurl(self, path):
-        """Creates an address to Beam with the given path."""
-        return self.config.BEAM_URI + path
+        """Create an address to Mixer with the given path."""
+        return self.config.Mixer_URI + path
 
     def _get_chat_details(self):
-        """gets chat connection details from Beam"""
-
-        # Creates the header for the request
+        """Get chat connection details from Mixer."""
+        # Create the header for the request
         header = {'Media-Type': 'application/json',
                   'Authorization': 'Bearer ' + self.config.ACCESS_TOKEN}
         # Get the request and return the responce
@@ -36,33 +35,39 @@ class Connection(Evented):
         self.userid = requests.get(url=url, headers=header).json()['id']
 
     def _connect_to_chat(self):
-        """Connects to the chat websocket."""
-
+        """Connect to the chat websocket."""
         if self.chat_details is None:
-            raise NotAuthenticatedError("You must first log in to Beam!")
+            raise NotAuthenticatedError("You must first log in to Mixer!")
 
         self.websocket = Socket(self.chat_details["endpoints"])
         self.websocket.on("opened", self._send_auth_packet)
         self.websocket.on("message", lambda msg: self.emit("message", msg))
 
     def _send_auth_packet(self):
-        """Sends an authentication packet to the chat server"""
+        """Send an authentication packet to the chat server."""
         self.websocket.send(
             "method",
             self.config.CHANNELID, self.userid, self.chat_details["authkey"],
             method="auth")
 
     def authenticate(self):
-        """Gets beam connection info and connects to the chat server."""
+        """Get Mixer connection info and connects to the chat server."""
         self._get_chat_details()
         self._connect_to_chat()
 
     def message(self, msg):
-        """Sends a chat message."""
+        """Send a chat message."""
         self.websocket.send("method", msg, method="msg")
 
     def whisper(self, target, msg):
+        """Send a whisper message."""
         self.websocket.send("method", target, msg, method="whisper")
 
-    def delete_msg(self,mid):
+    def delete_msg(self, mid):
+        """
+        Delete a message by ID.
+
+        :param: mid: Message ID
+        :type mid: UUID
+        """
         self.websocket.send("method", mid, method="deleteMessage")
