@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 """ Config File """
 
-import sys
-import requests
-import OAuth
 import json
+import os
+import requests
+import sys
+from datetime import *
 
 # DO NOT CHANGE THESE VALUES OR THE BOT WILL BREAK
-BEAM_URI = 'https://mixer.com/api/v1/'
+Mixer_URI = 'https://mixer.com/api/v1/'
 USERSCURRENT_URI = 'users/current'
 CHATSCID_URI = 'chats/{cid}'
 CHANNEL_NAME = sys.argv[1]
@@ -16,7 +17,6 @@ CHANNEL_NAME = sys.argv[1]
 # THE SETTINGS BELOW CAN BE CHANGED
 # Client ID, obtained from https://beam.pro/lab
 # select OAUTH CLIENTS and copy ID
-CLIENTID = OAuth.my_client_id
 # ACCESS_TOKEN = OAuth.my_token
 with open('tokens') as json_file:
     data = json.load(json_file)
@@ -24,6 +24,15 @@ with open('tokens') as json_file:
         ACCESS_TOKEN = k['access_token']
         REFRESH_TOKEN = k['refresh_token']
         EXPIRES_AT = k['expires_in']
+if datetime.fromisoformat(EXPIRES_AT) < datetime.now():
+    import OAuth
+
+try:
+    CLIENTID = os.environ['Client_ID']
+except KeyError:
+    print("Please set the environment variable Client_ID")
+    sys.exit(1)
+
 
 # This gets the ID for the channel you wish to join
 s = requests.Session()

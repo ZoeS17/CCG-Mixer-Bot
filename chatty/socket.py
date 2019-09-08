@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-'''Sockets handling for the Chat Bot'''
+""" Sockets handling for the Chat Bot. """
 from json import loads, dumps
 from random import randint
 from tornado.websocket import websocket_connect
@@ -10,7 +10,7 @@ from .evented import Evented
 
 
 class Socket(Evented):
-    '''Socket Class'''
+    """ Socket Class """
 
     packet_id = 0
 
@@ -30,7 +30,7 @@ class Socket(Evented):
 
     def _connect(self):
         address = self._get_address()
-        #print('Connecting to {}...'.format(address))
+        # print("Connecting to {}...".format(address))
 
         websocket_connect(
             address,
@@ -39,11 +39,11 @@ class Socket(Evented):
         )
 
     def parse_packet(self, packet_str):
-        '''Parses each packet from the chat server'''
+        """ Parse each packet from the chat server. """
         if packet_str is None:
             self._on_close()
         else:
-            # converts packet to a python readable format
+            # convert packet to a python readable format
             packet = loads(packet_str)
             self.emit("message", packet)
 
@@ -52,11 +52,11 @@ class Socket(Evented):
             self.ws = future.result()
             self.connected = True
             self.emit("opened")
-            self.emit('message', self.system_msg(
-                'Connetion to chat servers opened...'))
+            self.emit("message", self.system_msg(
+                "Connetion to chat servers opened..."))
         else:
-            self.emit('message', self.system_msg(
-                'Cannot connection to server, retying alternative servers'))
+            self.emit("message", self.system_msg(
+                "Cannot connection to server, retying alternative servers"))
             self.connected = False
 
             IOLoop.instance().call_later(1, self._connect)
@@ -64,12 +64,12 @@ class Socket(Evented):
     def _on_close(self):
         self.connected = False
         self.emit("closed")
-        self.emit('message', self.system_msg(
-            'Server connection lost, retying alternative servers'))
+        self.emit("message", self.system_msg(
+            "Server connection lost, retying alternative servers"))
         IOLoop.instance().call_later(1, self._connect)
 
     def send(self, _type, *args, **kwargs):
-        '''sends a packet to the chat server'''
+        """ Send a packet to the chat server. """
         if not self.connected:
             return
 
@@ -87,8 +87,8 @@ class Socket(Evented):
         self.packet_id += 1
 
     def system_msg(self, data):
-        '''builds a responce for bot system messages'''
-        responce = {'type': 'system',
-                    'event': 'connection',
-                    'data': data}
+        """ Build a responce for bot system messages. """
+        responce = {"type": "system",
+                    "event": "connection",
+                    "data": data}
         return responce
