@@ -7,6 +7,7 @@ import os
 import sys
 import requests
 from datetime import *
+from pwnlib.term import text
 
 
 class Logger:
@@ -32,10 +33,29 @@ class Logger:
         self.logfile.flush()
 
     def write(self, text):
-        self.stdout.write(text)
         self.logfile.write(text)
         self.logfile.flush()
 
+
+class _print:
+    def __init__(self, msg, color=None):
+        self.color = color
+        red = text.red
+        yellow = text.yellow
+        green = text.green
+        print(msg)
+        if self.color == "red":
+            sys.__stdout__.write(red(msg)+"\n")
+            sys.__stdout__.flush()
+        elif self.color == "yellow":
+            sys.__stdout__.write(yellow(msg)+"\n")
+            sys.__stdout__.flush()
+        elif self.color == "green":
+            sys.__stdout__.write(green(msg)+"\n")
+            sys.__stdout__.flush()
+        else:
+            sys.__stdout__.write(msg+"\n")
+            sys.__stdout__.flush()
 
 channelName = sys.argv[1]
 if len(sys.argv) > 1:
@@ -48,7 +68,6 @@ log = Logger(sys.stdout)
 sys.stdout = log
 sys.__stdout__.flush()
 awayAdmins = list()
-
 
 class Tokens:
 
@@ -237,6 +256,35 @@ class Handler():
                     self.chat.message(f"{count} trolls")
                 else:
                     self.chat.whisper(invoker, f"{count} trolls")
+
+                # TODO: Figure out Discord Webhooks
+                # webhookURL = ("")
+                # WebhookFile = f"{channelName} - Ban List.txt"
+                # staging = '{"content": "Bans", "tts": false, "embed": { "title"'
+                # staging = staging + ': "'+ WebhookFile + '"} }'
+                # payload = json.loads(staging)
+                # sys.__stdout__.write(staging + "\n" + str(payload) + "\n")
+                # sys.__stdout__.flush()
+                # d = requests.Session()
+                # d.headers.update({'Content-Type': 'multipart/form-data',
+                #                   'Content-Disposition': WebhookFile})
+                # with open("/root/code/CourtesyCallBot/Mixer/logs/"
+                #           f"{channelName}/banList", "rb") as Dfile:
+                #     payload = {'content': f"{channelName} - Ban List",
+                #                'tts': False}
+                #     form = aiohttp.FormData()
+                #     form.add_field("payload_json",payload)
+                #     form.add_field("file", Dfile, filename=WebhookFile,
+                #                     content_type="application/octet-stream")
+                #     (filename, fileobj, contentype)
+                #     fileStage = (WebhookFile, Dfile, 'application/octet-stream')
+                #     sys.__stdout__.write(repr(fileStage) + "\n")
+                #     sys.__stdout__.flush()
+                #     files = {'file': fileStage}
+                #     disco = d.post(webhookURL, data=payload, files=files)
+                #     sys.__stdout__.write(disco.text + "\n")
+                #     sys.__stdout__.flush()
+
         # new commands here
         # elif cmd.startswith(""):
             # pass
@@ -246,7 +294,7 @@ class Handler():
         func = self.event_types[data["type"]]
         func(data)
         if self.config.CHATDEBUG:
-            print(data)
+            _print(data)
 
     def type_reply(self, data):
         """ Handle the Reply type data. """
@@ -256,7 +304,7 @@ class Handler():
                     os.system("clear")
                     pass
                 else:
-                    print("Authenticated Failed, Chat log restricted")
+                    _print("Authenticated Failed, Chat log restricted")
             elif "Message deleted." in data["data"]:
                 pass
             elif "whisper" in data["data"]["message"]["meta"]:
@@ -270,6 +318,9 @@ class Handler():
     def type_event(self, data):
         """ Handle the reply chat event types. """
         global awayAdmins
+        warn = "yellow"
+        bad = "red"
+        good = "green"
         s = requests.Session()
         s.headers.update({'Client-ID': os.environ['Client_ID']})
         event_string = {
@@ -296,15 +347,15 @@ class Handler():
             users_resp = users_resp.json()["username"]
             test = data["data"]["roles"]
             role = self.top_role(test)
-            print(event_string[data["event"]].format(
+            _print(event_string[data["event"]].format(
                   username=users_resp,
                   role=role
-                  ))
+                  ), color=warn)
 
         elif data["event"] == "UserJoin" or data["event"] == "UserLeave":
             if data["data"]["username"] is not None:
                 usr = data["data"]["username"]
-                print(event_string[data["event"]].format(
+                _print(event_string[data["event"]].format(
                     usr))
                 if data["event"] == "UserJoin":
                     pass
@@ -318,32 +369,32 @@ class Handler():
             USERNAME = users_response
             if "moderator" in data["data"]:
                 mod = data["data"]["moderator"]["user_name"]
-                print(f"{mod} has purged {USERNAME}'s messages.")
+                _print(f"{mod} has purged {USERNAME}'s messages.", color=warn)
             else:
                 users_reply = s.get("https://mixer.com/api/v1/users/{}".format(
                                     data["data"]["user_id"]))
                 users_reply = users_reply.json()["username"]
-                print(event_string["Ban"].format(
+                _print(event_string["Ban"].format(
                   username=users_reply,
                   role="Banned"
-                  ))
+                  ), color=bad)
 
         elif data["event"] == "DeleteMessage":
-            print(event_string[data["event"]].format(
+            _print(event_string[data["event"]].format(
                 Mod=data["data"]["moderator"]["user_name"]))
 
         elif data["event"] == "ClearMessages":
-            print(event_string[data["event"]].format(
+            _print(event_string[data["event"]].format(
                 data["data"]["clearer"]["user_name"]))
 
         elif data["event"] == "PollStart":
             if self.poll_switch:
-                print(event_string[data["event"]].format(
+                _print(event_string[data["event"]].format(
                     data["data"]["author"]["user_name"]))
                 self.poll_switch = False
 
         elif data["event"] == "PollEnd":
-            print(event_string[data["event"]].format(
+            _print(event_string[data["event"]].format(
                 data["data"]["author"]["user_name"]))
             self.poll_switch = True
 
@@ -351,7 +402,7 @@ class Handler():
             user = data["data"]["user_name"]
             skill = data["data"]["skill"]["skill_name"]
             sparks = data["data"]["skill"]["cost"]
-            print(event_string["SkillAttribution"].format(
+            _print(event_string["SkillAttribution"].format(
                 user=user,
                 skill=skill,
                 sparks=sparks))
@@ -370,7 +421,7 @@ class Handler():
                 target = data["data"]["target"]
                 if target.lower() in awayAdmins:
                     z = "zoe_s17"
-                    if user.lower() == z & target.lower() == z:
+                    if user.lower() == z and target.lower() == z:
                         pass
                     else:
                         self.chat.whisper(user, f"{target} is away.")
@@ -379,17 +430,18 @@ class Handler():
                     sys.__stdout__.flush()
 
             elif "me" in data["data"]["message"]["meta"]:
-                print(event_string["me"].format(
+                _print(event_string["me"].format(
                     user=data["data"]["user_name"],
                     msg=msg))
             else:
-                print(event_string[data["event"]].format(
+                _print(event_string[data["event"]].format(
                     user=data["data"]["user_name"],
                     msg=msg))
                 if msg.startswith("We're now hosting @"):
-                    print("-" * 80)
+                    _print("-" * 80)
         else:
-            print(f"[debug] {data}")
+            sys.__stdout__.write(f"[debug] {data}")
+            sys.__stdout__.flush()
 
     def type_method(self, data):
         """ Handle the reply chat event types. """
