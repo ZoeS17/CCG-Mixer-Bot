@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """ Handles and formats chat events. """
+import csv
 import json
 import os
 import sys
@@ -45,17 +46,18 @@ class _print:
         green = text.green
         print(msg)
         if self.color == "red":
-            sys.__stdout__.write(red(msg)+"\n")
+            sys.__stdout__.write(red(msg) + "\n")
             sys.__stdout__.flush()
         elif self.color == "yellow":
-            sys.__stdout__.write(yellow(msg)+"\n")
+            sys.__stdout__.write(yellow(msg) + "\n")
             sys.__stdout__.flush()
         elif self.color == "green":
-            sys.__stdout__.write(green(msg)+"\n")
+            sys.__stdout__.write(green(msg) + "\n")
             sys.__stdout__.flush()
         else:
-            sys.__stdout__.write(msg+"\n")
+            sys.__stdout__.write(msg + "\n")
             sys.__stdout__.flush()
+
 
 channelName = sys.argv[1]
 if len(sys.argv) > 1:
@@ -68,6 +70,7 @@ log = Logger(sys.stdout)
 sys.stdout = log
 sys.__stdout__.flush()
 awayAdmins = list()
+
 
 class Tokens:
 
@@ -91,6 +94,8 @@ class Handler():
             "method": self.type_method, "system": self.type_system}
         self.poll_switch = True
         self.chat = chat
+        self.warns = ""
+        self.warnList = []
 
     def isAdmin(self, un):
         un = un.lower()
@@ -166,6 +171,9 @@ class Handler():
     def adminCmd(self, adm, params):
         d = params.split(" ")
         cmd = d[0].lower()
+        warn = "yellow"
+        bad = "red"
+        good = "green"
         if len(d) > 1:
             aparam = d[1].lower()
 
@@ -212,6 +220,9 @@ class Handler():
 
     def command(self, cmd, data, params, role):
         invoker = data["data"]["user_name"]
+        warn = "yellow"
+        bad = "red"
+        good = "green"
         if cmd.startswith("admin"):
             """ We can't delete a whisper so don't try. """
             if "whisper" in data["data"]["message"]["meta"]:
@@ -239,6 +250,7 @@ class Handler():
                 warning = f"{user}\t{mesg}"
                 with open(warnings, "a") as warn:
                     warn.write(f"{warning}\n")
+                _print(f"{invoker} warned user {user}: {mesg}", color=warn)
         elif cmd.startswith("banlist"):
             if "whisper" in data["data"]["message"]["meta"]:
                 postCount = False
@@ -249,8 +261,8 @@ class Handler():
                 """Write bans to channel/banList file."""
                 from get_ban_list import getBanList
                 getBanList(remote=f"{channelName}")
-                count = os.popen("echo $(wc -l /root/code/CourtesyCallBot/"
-                                 f"Mixer/logs/{channelName}/banList)|awk '"
+                count = os.popen("echo $(wc -l ./logs/"
+                                 f"{channelName}/banList)|awk '"
                                  "{print $1}'").read()[:-1]
                 if postCount:
                     self.chat.message(f"{count} trolls")
@@ -339,7 +351,11 @@ class Handler():
             "DeleteMessage": "{Mod} deleted a message."}
 
         if data["event"] == "WelcomeEvent":
-            pass
+            with open(f"./logs/{channelName}/warnings", "rt",
+                      encoding="utf-8", newline="") as f:
+                warnreader = csv.DictReader(f, dialect="excel-tab")
+                for row in warnreader:
+                    self.warnList.append(row["Name"])
 
         elif data["event"] == "UserUpdate":
             users_resp = s.get("https://mixer.com/api/v1/users/{}".format(
@@ -348,9 +364,8 @@ class Handler():
             test = data["data"]["roles"]
             role = self.top_role(test)
             _print(event_string[data["event"]].format(
-                  username=users_resp,
-                  role=role
-                  ), color=warn)
+                   username=users_resp,
+                   role=role), color=warn)
 
         elif data["event"] == "UserJoin" or data["event"] == "UserLeave":
             if data["data"]["username"] is not None:
@@ -364,24 +379,31 @@ class Handler():
                                       f"{usr} has left the channel.")
 
         elif data["event"] == "PurgeMessage":
+
             users_response = s.get("https://mixer.com/api/v1/users/{}".format(
                 data["data"]["user_id"])).json()["username"]
             USERNAME = users_response
+
             if "moderator" in data["data"]:
+
                 mod = data["data"]["moderator"]["user_name"]
                 _print(f"{mod} has purged {USERNAME}'s messages.", color=warn)
+
             else:
+
                 users_reply = s.get("https://mixer.com/api/v1/users/{}".format(
                                     data["data"]["user_id"]))
                 users_reply = users_reply.json()["username"]
                 _print(event_string["Ban"].format(
-                  username=users_reply,
-                  role="Banned"
-                  ), color=bad)
+                           username=users_reply,
+                           role="Banned"
+                           ),
+                       color=bad)
 
         elif data["event"] == "DeleteMessage":
             _print(event_string[data["event"]].format(
-                Mod=data["data"]["moderator"]["user_name"]))
+                Mod=data["data"]["moderator"]["user_name"]),
+                color=warn)
 
         elif data["event"] == "ClearMessages":
             _print(event_string[data["event"]].format(
@@ -434,9 +456,17 @@ class Handler():
                     user=data["data"]["user_name"],
                     msg=msg))
             else:
-                _print(event_string[data["event"]].format(
-                    user=data["data"]["user_name"],
-                    msg=msg))
+                user = data["data"]["user_name"]
+                if user in self.warnList:
+                    _print(event_string[data["event"]].format(
+                               user=user,
+                               msg=msg),
+                           color=warn)
+                    self.chat.whisper("Zoe_S17", "@Zoe_S17 [WARN] " + user)
+                else:
+                    _print(event_string[data["event"]].format(
+                        user=user,
+                        msg=msg))
                 if msg.startswith("We're now hosting @"):
                     _print("-" * 80)
         else:
@@ -448,7 +478,6 @@ class Handler():
         if self.config.CHATDEBUG:
             if data["method"] == "auth":
                 pass
-
             elif data["method"] == "msg":
                 if self.config.CHATDEBUG:
                     sys.__stdout__.write(f"METHOD MSG: {data}\n")
