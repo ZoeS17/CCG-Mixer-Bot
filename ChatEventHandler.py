@@ -218,6 +218,13 @@ class Handler():
         # elif cmd == "":
         # pass
 
+    def warnUpdate(self):
+        with open(f"./logs/{channelName}/warnings", "rt",
+                  encoding="utf-8", newline="") as f:
+            warnreader = csv.DictReader(f, dialect="excel-tab")
+            for row in warnreader:
+                self.warnList.append(row["Name"])
+
     def command(self, cmd, data, params, role):
         invoker = data["data"]["user_name"]
         warn = "yellow"
@@ -251,6 +258,7 @@ class Handler():
                 with open(warnings, "a") as warn:
                     warn.write(f"{warning}\n")
                 _print(f"{invoker} warned user {user}: {mesg}", color=warn)
+                self.warnUpdate()
         elif cmd.startswith("banlist"):
             if "whisper" in data["data"]["message"]["meta"]:
                 postCount = False
@@ -351,11 +359,7 @@ class Handler():
             "DeleteMessage": "{Mod} deleted a message."}
 
         if data["event"] == "WelcomeEvent":
-            with open(f"./logs/{channelName}/warnings", "rt",
-                      encoding="utf-8", newline="") as f:
-                warnreader = csv.DictReader(f, dialect="excel-tab")
-                for row in warnreader:
-                    self.warnList.append(row["Name"])
+            self.warnUpdate()
 
         elif data["event"] == "UserUpdate":
             users_resp = s.get("https://mixer.com/api/v1/users/{}".format(
