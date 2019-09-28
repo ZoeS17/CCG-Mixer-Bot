@@ -17,6 +17,7 @@ class Connection(Evented):
         self.config = config
         self.chat_details = None
         self.userid = None
+        self.username = None
 
     def _buildurl(self, path):
         """Create an address to Mixer with the given path."""
@@ -32,7 +33,9 @@ class Connection(Evented):
             cid=self.config.CHANNELID))
         self.chat_details = requests.get(url=url, headers=header).json()
         url = self._buildurl(self.config.USERSCURRENT_URI)
-        self.userid = requests.get(url=url, headers=header).json()['id']
+        self.userid = requests.get(url=url, headers=header).json()
+        self.username = self.userid["username"]
+        self.userid = self.userid["id"]
 
     def _connect_to_chat(self):
         """Connect to the chat websocket."""

@@ -96,6 +96,8 @@ class Handler():
         self.chat = chat
         self.warns = ""
         self.warnList = []
+        self.warnListIDs = []
+        self.username = ""
 
     def isAdmin(self, un):
         un = un.lower()
@@ -224,6 +226,7 @@ class Handler():
             warnreader = csv.DictReader(f, dialect="excel-tab")
             for row in warnreader:
                 self.warnList.append(row["Name"])
+                self.warnListIDs.append(row["uid"])
 
     def command(self, cmd, data, params, role):
         invoker = data["data"]["user_name"]
@@ -253,11 +256,15 @@ class Handler():
                 warnings = f"./logs/{channelName}/warnings"
                 o = params.split(" ")
                 user = o[0]
+                wSess = requests.Session()
+                wSess.headers.update({'Client-ID': os.environ['Client_ID']})
+                wid = wSess.get(f"https://mixer.com/api/v1/channels/{user}"
+                                "?fields=userId").json()["userId"]
                 mesg = " ".join(o[1:])
-                warning = f"{user}\t{mesg}"
+                warning = f"{user}\t{wid}\t{mesg}"
                 with open(warnings, "a") as warn:
                     warn.write(f"{warning}\n")
-                _print(f"{invoker} warned user {user}: {mesg}", color=warn)
+                _print(f"{invoker} warned user {user} \"{mesg}\"", color=warn)
                 self.warnUpdate()
         elif cmd.startswith("banlist"):
             if "whisper" in data["data"]["message"]["meta"]:
@@ -321,8 +328,8 @@ class Handler():
         if "data" in data:
             if "authenticated" in data["data"]:
                 if data["data"]["authenticated"]:
+                    self.username = self.chat.username
                     os.system("clear")
-                    pass
                 else:
                     _print("Authenticated Failed, Chat log restricted")
             elif "Message deleted." in data["data"]:
@@ -379,7 +386,7 @@ class Handler():
                 if data["event"] == "UserJoin":
                     pass
                 else:
-                    self.chat.whisper("Zoe_S17",
+                    self.chat.whisper(self.username,
                                       f"{usr} has left the channel.")
 
         elif data["event"] == "PurgeMessage":
@@ -446,12 +453,12 @@ class Handler():
                 user = data["data"]["user_name"]
                 target = data["data"]["target"]
                 if target.lower() in awayAdmins:
-                    z = "zoe_s17"
+                    z = self.username.lower()
                     if user.lower() == z and target.lower() == z:
                         pass
                     else:
                         self.chat.whisper(user, f"{target} is away.")
-                if target.lower() == "zoe_s17":
+                if target.lower() == self.username.lower():
                     sys.__stdout__.write(f"{user} → {target} : {msg}\n")
                     sys.__stdout__.flush()
 
@@ -461,12 +468,14 @@ class Handler():
                     msg=msg))
             else:
                 user = data["data"]["user_name"]
-                if user in self.warnList:
+                userID = str(data["data"]["user_id"])
+                if userID in self.warnListIDs:
                     _print(event_string[data["event"]].format(
                                user=user,
                                msg=msg),
                            color=warn)
-                    self.chat.whisper("Zoe_S17", "@Zoe_S17 [WARN] " + user)
+                    self.chat.whisper(self.username,
+                                      f"@{self.username} [WARN] " + user)
                 else:
                     _print(event_string[data["event"]].format(
                         user=user,
