@@ -66,6 +66,15 @@ class Connection(Evented):
         """Send a whisper message."""
         self.websocket.send("method", target, msg, method="whisper")
 
+    def purge(self, target):
+        """
+        Purge a user by name.
+
+        :param: target: User to purge
+        :type target: String
+        """
+        self.websocket.send("method", target, method="purge")
+
     def delete_msg(self, mid):
         """
         Delete a message by ID.
