@@ -5,8 +5,9 @@
 import csv
 import json
 import os
-import sys
+import re
 import requests
+import sys
 from datetime import *
 from pwnlib.term import text
 
@@ -256,6 +257,7 @@ class Handler():
                 warnings = f"./logs/{channelName}/warnings"
                 o = params.split(" ")
                 user = o[0]
+                user = re.split("@", user)[1]
                 wSess = requests.Session()
                 wSess.headers.update({'Client-ID': os.environ['Client_ID']})
                 wid = wSess.get(f"https://mixer.com/api/v1/channels/{user}"
@@ -266,6 +268,8 @@ class Handler():
                     warn.write(f"{warning}\n")
                 _print(f"{invoker} warned user {user} \"{mesg}\"", color=warn)
                 self.warnUpdate()
+                self.chat.purge(user)
+                self.chat.whisper(user, mesg)
         elif cmd.startswith("banlist"):
             if "whisper" in data["data"]["message"]["meta"]:
                 postCount = False
