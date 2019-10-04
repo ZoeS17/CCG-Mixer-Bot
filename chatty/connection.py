@@ -83,3 +83,9 @@ class Connection(Evented):
         :type mid: UUID
         """
         self.websocket.send("method", mid, method="deleteMessage")
+
+    def clear_chat(self):
+        """
+        Clears chat we're in
+        """
+        self.websocket.send("method", mid, method="clearMessages")
