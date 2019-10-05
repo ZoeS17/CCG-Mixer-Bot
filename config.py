@@ -13,20 +13,28 @@ Mixer_URI = 'https://mixer.com/api/v1/'
 USERSCURRENT_URI = 'users/current'
 CHATSCID_URI = 'chats/{cid}'
 CHANNEL_NAME = sys.argv[1]
+ACCESS_TOKEN = ""
+REFRESH_TOKEN = ""
+EXPIRES_AT = ""
 
 # THE SETTINGS BELOW CAN BE CHANGED
 # Client ID, obtained from https://beam.pro/lab
 # select OAUTH CLIENTS and copy ID
 # ACCESS_TOKEN = OAuth.my_token
-with open('tokens') as json_file:
-    data = json.load(json_file)
-    for k in data:
-        ACCESS_TOKEN = k['access_token']
-        REFRESH_TOKEN = k['refresh_token']
-        EXPIRES_AT = k['expires_in']
+def loadTokens():
+    global ACCESS_TOKEN
+    global REFRESH_TOKEN
+    global EXPIRES_AT
+    with open('tokens') as json_file:
+        data = json.load(json_file)
+        for k in data:
+            ACCESS_TOKEN = k['access_token']
+            REFRESH_TOKEN = k['refresh_token']
+            EXPIRES_AT = k['expires_in']
+loadTokens()
 if datetime.fromisoformat(EXPIRES_AT) < datetime.now():
     import OAuth
-
+    loadTokens()
 try:
     CLIENTID = os.environ['Client_ID']
 except KeyError:

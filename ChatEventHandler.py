@@ -486,6 +486,9 @@ class Handler():
                         msg=msg))
                 if msg.startswith("We're now hosting @"):
                     _print("-" * 80)
+                    self.chat.whisper("Scottybot","!queue purge")
+                    self.chat.whisper("Scottybot","!set queue off")
+                    self.chat.clear_chat()
         else:
             sys.__stdout__.write(f"[debug] {data}")
             sys.__stdout__.flush()
