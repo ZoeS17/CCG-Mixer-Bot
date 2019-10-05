@@ -47,7 +47,7 @@ class _print:
         green = text.green
         print(msg)
         if self.color == "red":
-            sys.__stdout__.write(red(msg) + "\n")
+            sys.__stdout__.write(red(msg) + "\a\n")
             sys.__stdout__.flush()
         elif self.color == "yellow":
             sys.__stdout__.write(yellow(msg) + "\n")
