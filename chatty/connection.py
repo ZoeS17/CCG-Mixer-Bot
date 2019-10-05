@@ -33,9 +33,9 @@ class Connection(Evented):
             cid=self.config.CHANNELID))
         self.chat_details = requests.get(url=url, headers=header).json()
         url = self._buildurl(self.config.USERSCURRENT_URI)
-        self.userid = requests.get(url=url, headers=header).json()
-        self.username = self.userid["username"]
-        self.userid = self.userid["id"]
+        user_resp = requests.get(url=url, headers=header).json()
+        self.username = user_resp["username"]
+        self.userid = user_resp["id"]
 
     def _connect_to_chat(self):
         """Connect to the chat websocket."""
@@ -85,7 +85,5 @@ class Connection(Evented):
         self.websocket.send("method", mid, method="deleteMessage")
 
     def clear_chat(self):
-        """
-        Clears chat we're in
-        """
-        self.websocket.send("method", mid, method="clearMessages")
+        """Clear the chat we're in."""
+        self.websocket.send("method", method="clearMessages")
