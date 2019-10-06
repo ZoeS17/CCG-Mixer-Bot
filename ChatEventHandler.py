@@ -10,6 +10,7 @@ import requests
 import sys
 from datetime import *
 from pwnlib.term import text
+from User import User
 
 
 class Logger:
@@ -39,6 +40,11 @@ class Logger:
         self.logfile.flush()
 
 
+class _debug:
+    def __init__(self, msg):
+        sys.__stdout__.write(str(msg) + "\n")
+        sys.__stdout__.flush()
+
 class _print:
     def __init__(self, msg, color=None):
         self.color = color
@@ -47,7 +53,7 @@ class _print:
         green = text.green
         print(msg)
         if self.color == "red":
-            sys.__stdout__.write(red(msg) + "\n")
+            sys.__stdout__.write(red(msg) + "\a\n")
             sys.__stdout__.flush()
         elif self.color == "yellow":
             sys.__stdout__.write(yellow(msg) + "\n")
@@ -71,10 +77,10 @@ log = Logger(sys.stdout)
 sys.stdout = log
 sys.__stdout__.flush()
 awayAdmins = list()
+users = {}
 
 
 class Tokens:
-
     """Tokens is a bearer from an OAuth access and refresh token retrieved
     via the :func:`~interactive_python.Handler.refresh` method.
     """
@@ -87,7 +93,8 @@ class Tokens:
 
 
 class Handler():
-    """ Handles chat events. """
+    """Handles chat events."""
+
     def __init__(self, config, chat):
         self.config = config
         self.event_types = {
@@ -229,6 +236,30 @@ class Handler():
                 self.warnList.append(row["Name"])
                 self.warnListIDs.append(row["uid"])
 
+    def _json_object_hook(self, d):
+        global users
+        d["admin"] = self.isAdmin(d["username"])
+        d["mod"] = False
+        d["toprole"] = self.top_role(d["userRoles"])
+        d.pop("userRoles")
+        for k,v in d.items():
+            if k == "toprole":
+                if v == "Mod":
+                    d["mod"] = True
+        users[d["username"]] = repr(User(**d))
+
+    def json2obj(self, data):
+        json.loads(data, object_hook=self._json_object_hook)
+
+    def chatusers(self):
+        global users
+        cs = requests.Session()
+        cs.headers.update({'Client-ID': os.environ['Client_ID']})
+        ChannelId = self.config.CHANNELID
+        chats_resp = cs.get(f"https://mixer.com/api/v2/chats/{ChannelId}/users")
+        self.json2obj(chats_resp.text)
+
+
     def command(self, cmd, data, params, role):
         invoker = data["data"]["user_name"]
         warn = "yellow"
@@ -343,12 +374,12 @@ class Handler():
             else:
                 pass
         else:
-            sys.__stdout__.write(f"Server Reply[error]: {data['error']}\n")
-            sys.__stdout__.flush()
+            _debug(f"Server Reply[error]: {data['error']}")
 
     def type_event(self, data):
         """ Handle the reply chat event types. """
         global awayAdmins
+        global users
         warn = "yellow"
         bad = "red"
         good = "green"
@@ -371,6 +402,7 @@ class Handler():
 
         if data["event"] == "WelcomeEvent":
             self.warnUpdate()
+            self.chatusers()
 
         elif data["event"] == "UserUpdate":
             users_resp = s.get("https://mixer.com/api/v1/users/{}".format(
@@ -385,13 +417,27 @@ class Handler():
         elif data["event"] == "UserJoin" or data["event"] == "UserLeave":
             if data["data"]["username"] is not None:
                 usr = data["data"]["username"]
+                usrid = data["data"]["id"]
                 _print(event_string[data["event"]].format(
                     usr))
                 if data["event"] == "UserJoin":
-                    pass
+                    roles = data["data"]["roles"]
+                    if "Mod" in roles:
+                        if self.isAdmin(usr) is True:
+                            users[usr] = User(username=usr, userId=usrid,
+                                              toprole="Mod", admin=True)
+                        else:
+                            users[usr] = User(username=usr, userId=usrid,
+                                              toprole="Mod", admin=False)
+                    else:
+                        users[usr] = User(username=usr, userId=usrid,
+                                             toprole=self.top_role(roles),
+                                             admin=False)
                 else:
                     self.chat.whisper(self.username,
                                       f"{usr} has left the channel.")
+                    if usr in users:
+                        users.pop(usr)
 
         elif data["event"] == "PurgeMessage":
 
@@ -463,8 +509,7 @@ class Handler():
                     else:
                         self.chat.whisper(user, f"{target} is away.")
                 if target.lower() == self.username.lower():
-                    sys.__stdout__.write(f"{user} → {target} : {msg}\n")
-                    sys.__stdout__.flush()
+                    _debug(f"{user} → {target} : {msg}")
 
             elif "me" in data["data"]["message"]["meta"]:
                 _print(event_string["me"].format(
@@ -486,12 +531,11 @@ class Handler():
                         msg=msg))
                 if msg.startswith("We're now hosting @"):
                     _print("-" * 80)
-                    self.chat.whisper("Scottybot","!queue purge")
-                    self.chat.whisper("Scottybot","!set queue off")
+                    self.chat.whisper("Scottybot", "!queue purge")
+                    self.chat.whisper("Scottybot", "!set queue off")
                     self.chat.clear_chat()
         else:
-            sys.__stdout__.write(f"[debug] {data}")
-            sys.__stdout__.flush()
+            _debug(f"[debug] {data}")
 
     def type_method(self, data):
         """ Handle the reply chat event types. """
@@ -500,14 +544,11 @@ class Handler():
                 pass
             elif data["method"] == "msg":
                 if self.config.CHATDEBUG:
-                    sys.__stdout__.write(f"METHOD MSG: {data}\n")
-                    sys.__stdout__.flush()
+                    _debug(f"METHOD MSG: {data}")
             else:
-                sys.__stdout__.write(f"METHOD MSG:  {data}\n")
-                sys.__stdout__.flush()
+                _debug(f"METHOD MSG:  {data}")
 
     def type_system(self, data):
         """ Handle the reply chat event types. """
         if self.config.CHATDEBUG:
-            sys.__stdout__.write(f"SYSTEM MSG:  {data['data']}\n")
-            sys.__stdout__.flush()
+            _debug(f"SYSTEM MSG:  {data['data']}")
