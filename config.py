@@ -46,7 +46,18 @@ except KeyError:
 s = requests.Session()
 s.headers.update({'Client-ID': CLIENTID})
 channel_response = s.get(f'https://mixer.com/api/v1/channels/{CHANNEL_NAME}')
-CHANNELID = channel_response.json()['id']
+if channel_response.status_code >= 500 <= 599:
+    """Fix for Mixer's non-standard 503 page."""
+    try: 
+        from BeautifulSoup import BeautifulSoup
+    except ImportError:
+        from bs4 import BeautifulSoup
+    parsed_html = BeautifulSoup(channel_response.text, features="lxml")
+    print (parsed_html.body.find('p', ).text)
+    raise requests.ConnectionError(channel_response)
+    sys.exit(2)
+elif channel_response.status_code == 200:
+    CHANNELID = channel_response.json()['id']
 
 # This is up to you to obtain. This can be done though
 # Rest API. for more info https://dev.beam.pro/reference/oauth/index.html
