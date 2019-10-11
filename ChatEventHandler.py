@@ -365,7 +365,6 @@ class Handler():
         try:
             # Deal with an edge case where whispers sometimes cause a TypeError.
             if "data" in data:
-                _debug("[Data]"+repr(data))
                 if type(data["data"]) is not str:
                     if "authenticated" in data["data"]:
                         if data["data"]["authenticated"]:
