@@ -15,5 +15,13 @@ setup(
     license="MIT",
     packages=find_packages(),
     include_package_data=True,
-    install_requires=["requests", "tornado", "pwnlib"]
+    install_requires=["requests", "tornado", "pwnlib", "beautifulsoup4"],
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Programming Language :: Python :: 3.7',
+        'License :: OSI Approved :: MIT License',
+        'Topic :: Communications :: Chat',
+        'Topic :: Internet',
+        'Topic :: Multimedia :: Video',
+    ]
 )

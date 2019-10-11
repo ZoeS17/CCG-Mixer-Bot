@@ -10,6 +10,7 @@ import requests
 import sys
 from datetime import *
 from pwnlib.term import text
+from setproctitle import setproctitle
 from User import User
 
 
@@ -106,6 +107,7 @@ class Handler():
         self.warnList = []
         self.warnListIDs = []
         self.username = ""
+        setproctitle(f"Mixer[{channelName}]")
 
     def isAdmin(self, un):
         un = un.lower()
@@ -360,21 +362,27 @@ class Handler():
 
     def type_reply(self, data):
         """ Handle the Reply type data. """
-        if "data" in data:
-            if "authenticated" in data["data"]:
-                if data["data"]["authenticated"]:
-                    self.username = self.chat.username
-                    os.system("clear")
-                else:
-                    _print("Authenticated Failed, Chat log restricted")
-            elif "Message deleted." in data["data"]:
-                pass
-            elif "whisper" in data["data"]["message"]["meta"]:
-                pass
+        try:
+            # Deal with an edge case where whispers sometimes cause a TypeError.
+            if "data" in data:
+                _debug("[Data]"+repr(data))
+                if type(data["data"]) is not str:
+                    if "authenticated" in data["data"]:
+                        if data["data"]["authenticated"]:
+                            self.username = self.chat.username
+                            os.system("clear")
+                        else:
+                            _print("Authenticated Failed, Chat log restricted")
+                    elif "whisper" in data["data"]["message"]["meta"]:
+                        pass
+                    else:
+                        pass
+                elif "Message deleted." in data["data"]:
+                    pass
             else:
-                pass
-        else:
-            _debug(f"Server Reply[error]: {data['error']}")
+                _debug(f"Server Reply[error]: {data['error']}")
+        except TypeError as e:
+            _debug("Data: "+repr(data))
 
     def type_event(self, data):
         """ Handle the reply chat event types. """
