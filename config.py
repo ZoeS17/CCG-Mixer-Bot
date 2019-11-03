@@ -16,11 +16,12 @@ CHANNEL_NAME = sys.argv[1]
 ACCESS_TOKEN = ""
 REFRESH_TOKEN = ""
 EXPIRES_AT = ""
-
 # THE SETTINGS BELOW CAN BE CHANGED
 # Client ID, obtained from https://beam.pro/lab
 # select OAUTH CLIENTS and copy ID
 # ACCESS_TOKEN = OAuth.my_token
+
+
 def loadTokens():
     global ACCESS_TOKEN
     global REFRESH_TOKEN
@@ -31,6 +32,8 @@ def loadTokens():
             ACCESS_TOKEN = k['access_token']
             REFRESH_TOKEN = k['refresh_token']
             EXPIRES_AT = k['expires_in']
+
+
 loadTokens()
 if datetime.fromisoformat(EXPIRES_AT) < datetime.now():
     import OAuth
@@ -48,12 +51,12 @@ s.headers.update({'Client-ID': CLIENTID})
 channel_response = s.get(f'https://mixer.com/api/v1/channels/{CHANNEL_NAME}')
 if channel_response.status_code >= 500 <= 599:
     """Fix for Mixer's non-standard 503 page."""
-    try: 
+    try:
         from BeautifulSoup import BeautifulSoup
     except ImportError:
         from bs4 import BeautifulSoup
     parsed_html = BeautifulSoup(channel_response.text, features="lxml")
-    print (parsed_html.body.find('p', ).text)
+    print(parsed_html.body.find('p', ).text)
     raise requests.ConnectionError(channel_response)
     sys.exit(2)
 elif channel_response.status_code == 200:

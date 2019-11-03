@@ -11,7 +11,7 @@ setup(
     author="Zoe Kahala",
     author_email="Zoe.Alice.Kahala@gmail.com",
     description="Chat Logger/Bot framework for Mixer.",
-    long_description="Chat Logger/Bot framework for Mixer. Based off Connor's code at https://github.com/mixer/beam-client-python",
+    long_description="Chat Logger/Bot framework for Mixer. Based off Connor's code @ github.com/mixer/beam-client-python",
     license="MIT",
     packages=find_packages(),
     include_package_data=True,
