@@ -8,6 +8,7 @@ from subprocess import Popen
 import asyncio
 import json
 import os
+import signal
 import sys
 
 
@@ -47,7 +48,11 @@ async def get_access_token(client):
                code.code)])
     try:
         OaTokens = await code.accepted()
+        # Added signal to ignore child proc closing in
+        # case Firefox is not in multiOptOut mode
+        p.send_signal(signal.SIGCHLD(signal.SIG_IGN))
         p.terminate()
+        p.wait()
         return OaTokens
     except ShortCodeAccessDeniedError:
         print("The user denied access to our client")
