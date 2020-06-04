@@ -112,7 +112,7 @@ class Handler():
 
     def isAdmin(self, un):
         un = un.lower()
-        with open(f"./Admins", "rt", encoding='utf-8') as a:
+        with open("./Admins", "rt", encoding='utf-8') as a:
             lines = a.read().splitlines()
             if un in lines:
                 return True
@@ -191,14 +191,14 @@ class Handler():
             aparam = d[1].lower()
 
         if cmd == "add":
-            with open(f"./Admins", "at", encoding='utf-8') as f:
+            with open("./Admins", "at", encoding='utf-8') as f:
                 f.write(d[1].lower() + "\n")
             msg = f"Added user {aparam} to the admin list."
             self.chat.whisper(adm, msg + "\n")
 
         elif cmd == "del":
-            with open(f"./Admins", "rt", encoding='utf-8') as o:
-                with open(f"./.tmp_Admins", "wt", encoding='utf-8') as n:
+            with open("./Admins", "rt", encoding='utf-8') as o:
+                with open("./.tmp_Admins", "wt", encoding='utf-8') as n:
                     lines = o.read().splitlines()
                     for item in lines:
                         if item == d[1].lower():
@@ -212,7 +212,7 @@ class Handler():
 
         elif cmd == "list":
             msg = ""
-            with open(f"./Admins", "rt", encoding='utf-8') as f:
+            with open("./Admins", "rt", encoding='utf-8') as f:
                 lines = f.read().splitlines()
                 msg += " ".join(lines)
                 self.chat.whisper(adm, msg + "\n")
