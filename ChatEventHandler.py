@@ -46,6 +46,7 @@ class _debug:
         sys.__stdout__.write(str(msg) + "\n")
         sys.__stdout__.flush()
 
+
 class _print:
     def __init__(self, msg, color=None):
         self.color = color
@@ -244,7 +245,7 @@ class Handler():
         d["mod"] = False
         d["toprole"] = self.top_role(d["userRoles"])
         d.pop("userRoles")
-        for k,v in d.items():
+        for k, v in d.items():
             if k == "toprole":
                 if v == "Mod":
                     d["mod"] = True
@@ -258,9 +259,9 @@ class Handler():
         cs = requests.Session()
         cs.headers.update({'Client-ID': os.environ['Client_ID']})
         ChannelId = self.config.CHANNELID
-        chats_resp = cs.get(f"https://mixer.com/api/v2/chats/{ChannelId}/users")
+        chats_resp = cs.get(f"https://mixer.com/api/v2/chats/{ChannelId}"
+                            "/users")
         self.json2obj(chats_resp.text)
-
 
     def command(self, cmd, data, params, role):
         invoker = data["data"]["user_name"]
@@ -321,34 +322,6 @@ class Handler():
                 else:
                     self.chat.whisper(invoker, f"{count} trolls")
 
-                # TODO: Figure out Discord Webhooks
-                # webhookURL = ("")
-                # WebhookFile = f"{channelName} - Ban List.txt"
-                # staging = '{"content": "Bans", "tts": false, "embed": { "title"'
-                # staging = staging + ': "'+ WebhookFile + '"} }'
-                # payload = json.loads(staging)
-                # sys.__stdout__.write(staging + "\n" + str(payload) + "\n")
-                # sys.__stdout__.flush()
-                # d = requests.Session()
-                # d.headers.update({'Content-Type': 'multipart/form-data',
-                #                   'Content-Disposition': WebhookFile})
-                # with open("/root/code/CourtesyCallBot/Mixer/logs/"
-                #           f"{channelName}/banList", "rb") as Dfile:
-                #     payload = {'content': f"{channelName} - Ban List",
-                #                'tts': False}
-                #     form = aiohttp.FormData()
-                #     form.add_field("payload_json",payload)
-                #     form.add_field("file", Dfile, filename=WebhookFile,
-                #                     content_type="application/octet-stream")
-                #     (filename, fileobj, contentype)
-                #     fileStage = (WebhookFile, Dfile, 'application/octet-stream')
-                #     sys.__stdout__.write(repr(fileStage) + "\n")
-                #     sys.__stdout__.flush()
-                #     files = {'file': fileStage}
-                #     disco = d.post(webhookURL, data=payload, files=files)
-                #     sys.__stdout__.write(disco.text + "\n")
-                #     sys.__stdout__.flush()
-
         # new commands here
         # elif cmd.startswith(""):
             # pass
@@ -363,7 +336,7 @@ class Handler():
     def type_reply(self, data):
         """ Handle the Reply type data. """
         try:
-            # Deal with an edge case where whispers sometimes cause a TypeError.
+            # Deal with an edge case where whispers can cause a TypeError.
             if "data" in data:
                 if type(data["data"]) is not str:
                     if "authenticated" in data["data"]:
@@ -381,7 +354,7 @@ class Handler():
             else:
                 _debug(f"Server Reply[error]: {data['error']}")
         except TypeError as e:
-            _debug("Data: "+repr(data))
+            _debug("Data: " + repr(data))
 
     def type_event(self, data):
         """ Handle the reply chat event types. """
@@ -438,8 +411,8 @@ class Handler():
                                               toprole="Mod", admin=False)
                     else:
                         users[usr] = User(username=usr, userId=usrid,
-                                             toprole=self.top_role(roles),
-                                             admin=False)
+                                          toprole=self.top_role(roles),
+                                          admin=False)
                 else:
                     self.chat.whisper(self.username,
                                       f"{usr} has left the channel.")
@@ -462,11 +435,8 @@ class Handler():
                 users_reply = s.get("https://mixer.com/api/v1/users/{}".format(
                                     data["data"]["user_id"]))
                 users_reply = users_reply.json()["username"]
-                _print(event_string["Ban"].format(
-                           username=users_reply,
-                           role="Banned"
-                           ),
-                       color=bad)
+                _print(event_string["Ban"].format(username=users_reply,
+                       role="Banned"), color=bad)
 
         elif data["event"] == "DeleteMessage":
             _print(event_string[data["event"]].format(
@@ -527,15 +497,13 @@ class Handler():
                 userID = str(data["data"]["user_id"])
                 if userID in self.warnListIDs:
                     _print(event_string[data["event"]].format(
-                               user=user,
-                               msg=msg),
+                           user=user, msg=msg),
                            color=warn)
                     self.chat.whisper(self.username,
                                       f"@{self.username} [WARN] " + user)
                 else:
-                    _print(event_string[data["event"]].format(
-                        user=user,
-                        msg=msg))
+                    _print(event_string[data["event"]].format(user=user,
+                           msg=msg))
                 if msg.startswith("We're now hosting @"):
                     _print("-" * 80)
                     self.chat.whisper("Scottybot", "!queue purge")
