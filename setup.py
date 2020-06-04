@@ -15,7 +15,7 @@ setup(
     license="MIT",
     packages=find_packages(),
     include_package_data=True,
-    install_requires=["requests", "tornado", "pwnlib", "beautifulsoup4"],
+    install_requires=["requests", "tornado", "pwntools", "beautifulsoup4"],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Programming Language :: Python :: 3.7',
