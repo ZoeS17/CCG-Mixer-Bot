@@ -6,5 +6,5 @@ install:
   - pip install flake8
   - python setup.py -q install
 before_script:
-  - "flake8 *.py"
+  - "flake8 --ignore=F401,F403,F405,F841 --exclude=setup.py *.py"
 script: pytest
