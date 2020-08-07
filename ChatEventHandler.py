@@ -16,10 +16,11 @@ from User import User
 
 class Logger:
 
-    def __init__(self, stdout):
+    def __init__(self, stdout, today=date.today()):
         global CHATDEBUG
-        today = date.today()
+        self.today = today
         print(today)
+        os.umask(0o012)
         if CHATDEBUG is True:
             self.filename = f"./logs/{channelName}/Debug/{today}.mlog"
         else:
@@ -53,7 +54,8 @@ class _print:
         red = text.red
         yellow = text.yellow
         green = text.green
-        print(msg)
+        log.write(msg + "\n")
+        log.flush()
         if self.color == "red":
             sys.__stdout__.write(red(msg) + "\a\n")
             sys.__stdout__.flush()
@@ -291,7 +293,8 @@ class Handler():
                 warnings = f"./logs/{channelName}/warnings"
                 o = params.split(" ")
                 user = o[0]
-                user = re.split("@", user)[1]
+                if "@" in user:
+                    user = re.split("@", user)[1]
                 wSess = requests.Session()
                 wSess.headers.update({'Client-ID': os.environ['Client_ID']})
                 wid = wSess.get(f"https://mixer.com/api/v1/channels/{user}"
@@ -352,7 +355,8 @@ class Handler():
                 elif "Message deleted." in data["data"]:
                     pass
             else:
-                _debug(f"Server Reply[error]: {data['error']}")
+                if data['error'] != "None":
+                    _debug(f"Server Reply[error]: {data}")
         except TypeError as e:
             _debug("Data: " + repr(data))
 
@@ -437,6 +441,8 @@ class Handler():
                 users_reply = users_reply.json()["username"]
                 _print(event_string["Ban"].format(username=users_reply,
                        role="Banned"), color=bad)
+                self.chat.message(f"Mjölnir used ban on {users_reply}. "
+                                  "It was super effective!")
 
         elif data["event"] == "DeleteMessage":
             _print(event_string[data["event"]].format(
@@ -506,8 +512,14 @@ class Handler():
                            msg=msg))
                 if msg.startswith("We're now hosting @"):
                     _print("-" * 80)
-                    self.chat.whisper("Scottybot", "!queue purge")
-                    self.chat.whisper("Scottybot", "!set queue off")
+                    if channelName == "AzuraRose":
+                        self.chat.whisper("Courtesy_Call_Gaming",
+                                          "!queue purge")
+                        self.chat.whisper("Courtesy_Call_Gaming",
+                                          "!set queue off")
+                    else:
+                        self.chat.whisper("Scottybot", "!queue purge")
+                        self.chat.whisper("Scottybot", "!set queue off")
                     self.chat.clear_chat()
         else:
             _debug(f"[debug] {data}")

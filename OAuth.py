@@ -4,7 +4,7 @@
 """Handles our initial oauth request."""
 from mixer_shortcode import OAuthClient, ShortCodeAccessDeniedError,\
     ShortCodeTimeoutError
-from subprocess import Popen
+import subprocess
 import asyncio
 import json
 import os
@@ -23,7 +23,7 @@ scopes = ["channel:details:self channel:update:self chat:bypass_catbot "
           "chat:bypass_filter chat:bypass_slowchat chat:change_ban "
           "chat:change_role chat:chat chat:clear_messages chat:connect "
           "chat:poll_start chat:purge chat:remove_message chat:timeout "
-          "chat:whisper"]
+          "chat:whisper user:details:self"]
 
 
 def out(access_token, token_type, token_expires_at, refresh_token):
@@ -43,12 +43,19 @@ async def get_access_token(client):
     """Open Firefox to get user to approve our shortcode request."""
     code = await client.get_code()
     print("Go to mixer.com/go and enter {}".format(code.code))
-    p = Popen(["firefox", "https://mixer.com/go?code={}".format(
-               code.code)])
+    p = subprocess.Popen(["/usr/bin/google-chrome-stable",
+                         "https://mixer.com/go?code={}".format(code.code)],
+                         stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    # try:
+    #     o,e = p.communitcate(timeout=60)
+    # except supprocess.TimeoutExpired:
+    #     p.kill()
+    #     o,e = p.communitcate()
     try:
         OaTokens = await code.accepted()
-        p.terminate()
-        return OaTokens
+        if p.poll() is not None:
+            p.terminate()
+            return OaTokens
     except ShortCodeAccessDeniedError:
         print("The user denied access to our client")
     except ShortCodeTimeoutError:
